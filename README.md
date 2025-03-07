@@ -9,7 +9,6 @@ Jest to aplikacja w języku Python umożliwiająca symulację odpowiedzi układu
 - Wizualizację schematu blokowego układu regulacji.
 - Wyświetlanie wykresów pokazujących zachowanie układu w czasie.
 
-Program został zaprojektowany z myślą o edukacji w zakresie analizy i projektowania systemów sterowania.
 
 ## Wymagania
 
