@@ -9,7 +9,7 @@ def sprawdz_stabilnosc(a, b, k, A):
     return np.all(np.real(bieguny) < 0), bieguny
 
 def symuluj_odpowiedz(k, a, b, t, sygnal_wejsciowy, A):
-    licznik = [A * k]  # Uwzględniamy A w liczniku
+    licznik = [A * k]  
     mianownik = [1, (a + b), (a * b) + k]
     uklad = signal.TransferFunction(licznik, mianownik)
     t_wyj, y_wyj, _ = signal.lsim(uklad, U=sygnal_wejsciowy, T=t)
@@ -44,17 +44,17 @@ def symuluj_i_rysuj():
         k = float(entry_k.get())
         a = float(entry_a.get())
         b = float(entry_b.get())
-        A = float(entry_A.get())  # Dodanie parametru A
+        A = float(entry_A.get())
 
         t = np.linspace(0, 10, 1000)
         if sygnal_var.get() == "Skok jednostkowy":
             sygnal_wejsciowy = np.heaviside(t, 1)
-            sygnal_wejsciowy[0] = 0  # Początek układu współrzędnych widoczny
+            sygnal_wejsciowy[0] = 0 
         else:
             sygnal_wejsciowy = np.sin(t)
 
-        stabilny, bieguny = sprawdz_stabilnosc(a, b, k, A)  # Przekazanie parametru A
-        t_wyj, y_wyj = symuluj_odpowiedz(k, a, b, t, sygnal_wejsciowy, A)  # Przekazanie parametru A
+        stabilny, bieguny = sprawdz_stabilnosc(a, b, k, A)  
+        t_wyj, y_wyj = symuluj_odpowiedz(k, a, b, t, sygnal_wejsciowy, A)  
 
         ax1.clear()
         ax2.clear()
