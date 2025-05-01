@@ -3,17 +3,47 @@ import matplotlib.pyplot as plt
 import scipy.signal as signal
 import customtkinter as ctk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from control import tf, root_locus
 
 def sprawdz_stabilnosc(a, b, k, A):
     bieguny = np.roots([A, (a + b), (a * b) + k])
     return np.all(np.real(bieguny) < 0), bieguny
 
 def symuluj_odpowiedz(k, a, b, t, sygnal_wejsciowy, A):
-    licznik = [A * k]  
+    licznik = [A * k]  # Uwzględniamy A w liczniku
     mianownik = [1, (a + b), (a * b) + k]
     uklad = signal.TransferFunction(licznik, mianownik)
     t_wyj, y_wyj, _ = signal.lsim(uklad, U=sygnal_wejsciowy, T=t)
     return t_wyj, y_wyj
+
+def rysuj_linie_pierwiastkowe(a, b, A, ax):
+    # Tworzenie transmitancji dla root locus (k jako zmienny parametr)
+    licznik = [A]
+    mianownik = [1, (a + b), (a * b)]
+    system = tf(licznik, mianownik)
+    
+    ax.clear()
+    root_locus(system, plot=True, grid=True, ax=ax)
+    
+    # Ustalanie zakresu osi dla lepszej widoczności
+    x_min, x_max = -10, 10
+    y_min, y_max = -10, 10
+    
+    # Rysowanie osi kartezjańskich
+    ax.axhline(0, color='black', linewidth=0.5)
+    ax.axvline(0, color='black', linewidth=0.5)
+    
+    # Ustawienie zakresu i etykiet
+    ax.set_xlim([x_min, x_max])
+    ax.set_ylim([y_min, y_max])
+    ax.set_title("Linie pierwiastkowe")
+    ax.set_xlabel("Część rzeczywista")
+    ax.set_ylabel("Część urojona")
+    ax.grid(True)
+    
+    # Dodanie strzałek na końcach osi
+    ax.plot([x_max], [0], '>k', markersize=5, clip_on=False)
+    ax.plot([0], [y_max], '^k', markersize=5, clip_on=False)
 
 def rysuj_uklad(canvas):
     canvas.delete("all")
@@ -49,35 +79,47 @@ def symuluj_i_rysuj():
         t = np.linspace(0, 10, 1000)
         if sygnal_var.get() == "Skok jednostkowy":
             sygnal_wejsciowy = np.heaviside(t, 1)
-            sygnal_wejsciowy[0] = 0 
+            sygnal_wejsciowy[0] = 0
         else:
             sygnal_wejsciowy = np.sin(t)
 
-        stabilny, bieguny = sprawdz_stabilnosc(a, b, k, A)  
-        t_wyj, y_wyj = symuluj_odpowiedz(k, a, b, t, sygnal_wejsciowy, A)  
+        stabilny, bieguny = sprawdz_stabilnosc(a, b, k, A)
+        t_wyj, y_wyj = symuluj_odpowiedz(k, a, b, t, sygnal_wejsciowy, A)
 
         ax1.clear()
         ax2.clear()
+        ax3.clear()
 
+        # Wykres sygnału pobudzającego
         ax1.plot(t, sygnal_wejsciowy, label="Sygnał pobudzający", color='blue')
         ax1.set_title("Sygnał pobudzający")
         ax1.set_xlabel("Czas [s]")
         ax1.set_ylabel("u(t)")
-        ax1.set_xlim([-0.09, 10])
-        ax1.set_ylim([min(sygnal_wejsciowy), max(sygnal_wejsciowy) + 0.1])
-        ax1.grid()
+        ax1.set_xlim([-0.5, 10.5])
+        ax1.set_ylim([min(sygnal_wejsciowy)-0.5, max(sygnal_wejsciowy)+0.5])
+        ax1.grid(True)
+        ax1.axhline(0, color='black', linewidth=0.5)
+        ax1.axvline(0, color='black', linewidth=0.5)
 
+        # Wykres odpowiedzi układu
         ax2.plot(t_wyj, y_wyj, label="Odpowiedź układu", color='red')
         ax2.set_title("Odpowiedź układu")
         ax2.set_xlabel("Czas [s]")
         ax2.set_ylabel("y(t)")
-        ax2.set_xlim([0, 10])
-        ax2.set_ylim([min(y_wyj) - 0.1, max(y_wyj) + 0.1])
-        ax2.grid()
+        ax2.set_xlim([-0.5, 10.5])
+        ax2.set_ylim([min(y_wyj)-0.5, max(y_wyj)+0.5])
+        ax2.grid(True)
+        ax2.axhline(0, color='black', linewidth=0.5)
+        ax2.axvline(0, color='black', linewidth=0.5)
 
+        # Wykres linii pierwiastkowych
+        rysuj_linie_pierwiastkowe(a, b, A, ax3)
+
+        # Dopasowanie layoutu
+        plt.tight_layout()
         canvas_fig.draw()
 
-        # Dodanie aktualizacji GUI
+        # Aktualizacja GUI
         root.update()
 
         if stabilny:
@@ -128,7 +170,8 @@ przycisk_symuluj.pack(pady=10)
 label_stabilnosc = ctk.CTkLabel(frame, text="")
 label_stabilnosc.pack()
 
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12,5))
+# Utworzenie 3 wykresów obok siebie
+fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
 canvas_fig = FigureCanvasTkAgg(fig, master=frame)
 canvas_fig.get_tk_widget().pack()
 
