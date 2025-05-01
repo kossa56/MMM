@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import scipy.signal as signal
 import customtkinter as ctk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from control import tf, root_locus
@@ -10,14 +9,38 @@ def sprawdz_stabilnosc(a, b, k, A):
     return np.all(np.real(bieguny) < 0), bieguny
 
 def symuluj_odpowiedz(k, a, b, t, sygnal_wejsciowy, A):
-    licznik = [A * k]  # Uwzględniamy A w liczniku
-    mianownik = [1, (a + b), (a * b) + k]
-    uklad = signal.TransferFunction(licznik, mianownik)
-    t_wyj, y_wyj, _ = signal.lsim(uklad, U=sygnal_wejsciowy, T=t)
-    return t_wyj, y_wyj
+    # Parametry równania różniczkowego
+    # y''(t) + (a+b)y'(t) + (a*b + k)y(t) = A*k*u(t)
+    # Przekształcone do postaci:
+    # y''(t) = - (a+b)y'(t) - (a*b + k)y(t) + A*k*u(t)
+    
+    n = len(t)
+    h = t[1] - t[0]  # krok czasowy
+    
+    # Inicjalizacja zmiennych
+    y = np.zeros(n)
+    y_p = np.zeros(n)  # pierwsza pochodna
+    y_pp = np.zeros(n)  # druga pochodna
+    
+    # Warunki początkowe
+    y[0] = 0
+    y_p[0] = 0
+    y_pp[0] = - (a + b) * y_p[0] - (a * b + k) * y[0] + A * k * sygnal_wejsciowy[0]
+    
+    # Metoda Taylora (zgodnie z MMM-pomoc)
+    for i in range(n - 1):
+        # Obliczenie drugiej pochodnej w chwili i
+        y_pp[i] = - (a + b) * y_p[i] - (a * b + k) * y[i] + A * k * sygnal_wejsciowy[i]
+        
+        # Obliczenie pierwszej pochodnej w chwili i+1
+        y_p[i+1] = y_p[i] + h * y_pp[i]
+        
+        # Obliczenie y w chwili i+1
+        y[i+1] = y[i] + h * y_p[i] + (h**2 / 2) * y_pp[i]
+    
+    return t, y
 
 def rysuj_linie_pierwiastkowe(a, b, A, ax):
-    # Tworzenie transmitancji dla root locus (k jako zmienny parametr)
     licznik = [A]
     mianownik = [1, (a + b), (a * b)]
     system = tf(licznik, mianownik)
@@ -25,15 +48,12 @@ def rysuj_linie_pierwiastkowe(a, b, A, ax):
     ax.clear()
     root_locus(system, plot=True, grid=True, ax=ax)
     
-    # Ustalanie zakresu osi dla lepszej widoczności
     x_min, x_max = -10, 10
     y_min, y_max = -10, 10
     
-    # Rysowanie osi kartezjańskich
     ax.axhline(0, color='black', linewidth=0.5)
     ax.axvline(0, color='black', linewidth=0.5)
     
-    # Ustawienie zakresu i etykiet
     ax.set_xlim([x_min, x_max])
     ax.set_ylim([y_min, y_max])
     ax.set_title("Linie pierwiastkowe")
@@ -41,7 +61,6 @@ def rysuj_linie_pierwiastkowe(a, b, A, ax):
     ax.set_ylabel("Część urojona")
     ax.grid(True)
     
-    # Dodanie strzałek na końcach osi
     ax.plot([x_max], [0], '>k', markersize=5, clip_on=False)
     ax.plot([0], [y_max], '^k', markersize=5, clip_on=False)
 
@@ -49,23 +68,19 @@ def rysuj_uklad(canvas):
     canvas.delete("all")
     canvas.configure(bg="white")
     
-    # Bloki
     canvas.create_rectangle(50, 50, 150, 100, fill="lightgray", outline="black", width=2)
     canvas.create_text(100, 75, text="k", font=("Arial", 14, "bold"), fill="black")
     canvas.create_rectangle(200, 50, 350, 100, fill="lightgray", outline="black", width=2)
     canvas.create_text(275, 75, text="A / (s + a)(s + b)", font=("Arial", 14, "bold"), fill="black")
     
-    # Linie połączeń
     canvas.create_line(30, 75, 50, 75, arrow="last", fill="black", width=2)
     canvas.create_line(150, 75, 200, 75, arrow="last", fill="black", width=2)
     canvas.create_line(350, 75, 400, 75, arrow="last", fill="black", width=2)
     
-    # Sprzężenie zwrotne
     canvas.create_line(400, 75, 400, 130, fill="black", width=2)
     canvas.create_line(400, 130, 30, 130, fill="black", width=2)
     canvas.create_line(30, 130, 30, 75, arrow="last", fill="black", width=2)
     
-    # Opisy wejścia i wyjścia
     canvas.create_text(2, 75, text="u(t)", font=("Arial", 12), fill="black", anchor="w")
     canvas.create_text(410, 75, text="y(t)", font=("Arial", 12), fill="black", anchor="w")
 
@@ -90,7 +105,6 @@ def symuluj_i_rysuj():
         ax2.clear()
         ax3.clear()
 
-        # Wykres sygnału pobudzającego
         ax1.plot(t, sygnal_wejsciowy, label="Sygnał pobudzający", color='blue')
         ax1.set_title("Sygnał pobudzający")
         ax1.set_xlabel("Czas [s]")
@@ -101,7 +115,6 @@ def symuluj_i_rysuj():
         ax1.axhline(0, color='black', linewidth=0.5)
         ax1.axvline(0, color='black', linewidth=0.5)
 
-        # Wykres odpowiedzi układu
         ax2.plot(t_wyj, y_wyj, label="Odpowiedź układu", color='red')
         ax2.set_title("Odpowiedź układu")
         ax2.set_xlabel("Czas [s]")
@@ -112,14 +125,11 @@ def symuluj_i_rysuj():
         ax2.axhline(0, color='black', linewidth=0.5)
         ax2.axvline(0, color='black', linewidth=0.5)
 
-        # Wykres linii pierwiastkowych
         rysuj_linie_pierwiastkowe(a, b, A, ax3)
 
-        # Dopasowanie layoutu
         plt.tight_layout()
         canvas_fig.draw()
 
-        # Aktualizacja GUI
         root.update()
 
         if stabilny:
@@ -170,7 +180,6 @@ przycisk_symuluj.pack(pady=10)
 label_stabilnosc = ctk.CTkLabel(frame, text="")
 label_stabilnosc.pack()
 
-# Utworzenie 3 wykresów obok siebie
 fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
 canvas_fig = FigureCanvasTkAgg(fig, master=frame)
 canvas_fig.get_tk_widget().pack()
